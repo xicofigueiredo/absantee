@@ -11,35 +11,151 @@ public class HolidayTest
 
         new Holiday(colabDouble.Object);
 
-        // isto não é um tewste unitário a Holiday, porque não isola do Colaborator
-        // Colaborator colab = new Colaborator("a", "a@b.c");
-        // IColaborator colab = new Colaborator("a", "a@b.c");
-        // new Holiday(colab);
+    }
+
+    [Fact]
+    public void Constructor_WithValidIColaborator_SetsColaboratorCorrectly()
+    {
+        // Arrange
+        var mockColab = new Mock<IColaborator>();
+
+        // Act
+        var holiday = new Holiday(mockColab.Object);
+
+        // Assert
+        Assert.Equal(mockColab.Object, holiday.GetColaborator());
     }
 
 
     [Fact]
     public void WhenPassingNullAsColaborator_ThenThrowsException()
     {
-        Assert.Throws<ArgumentException>(() => new Holiday(null));
+        var exception = Assert.Throws<ArgumentException>(() => new Holiday(null!));
+
+        Assert.Contains("Invalid argument: colaborator must be non null", exception.Message);
     }
 
 
     [Fact]
-    public void WhenRequestingName_ThenReturnColaboratorName()
+    public void WhenAddingNewPeriod_ThenPeriodIsAdded()
     {
         // arrange
-        string NOME = "nome";
+        DateOnly initialDate = DateOnly.MinValue;
+        DateOnly finalDate = DateOnly.MaxValue;
+
+        Mock<HolidayPeriod> holidayPeriod = new Mock<HolidayPeriod>(); // quero usar isto, perguntar professor
         Mock<IColaborator> colabDouble = new Mock<IColaborator>();
-        colabDouble.Setup(p => p.getName()).Returns(NOME);
+        Mock<IHolidayPeriodFactory> holidayPeriodFactoryDouble = new Mock<IHolidayPeriodFactory>();
 
-        Holiday holiday = new Holiday(colabDouble.Object); // SUT/OUT
+        var holiday = new Holiday(colabDouble.Object);
+        var expectedHolidayPeriod = new HolidayPeriod(initialDate, finalDate);
 
-        // act
-        string nameResult = holiday.getName();
+        holidayPeriodFactoryDouble.Setup(hpf => hpf.NewHolidayPeriod(initialDate, finalDate)).Returns(expectedHolidayPeriod);
 
-        // assert
-        Assert.Equal(NOME, nameResult);
+        //act
+        HolidayPeriod result = holiday.addHolidayPeriod(holidayPeriodFactoryDouble.Object, initialDate, finalDate);
+
+        //assert
+        Assert.NotNull(result);
+        Assert.Equal(initialDate, result.getStartDate());
+        Assert.Equal(finalDate, result.getEndDate());
+ 
     }
+
+    [Fact]
+    public void WhenAddingMultiplePeriods_ThenAllPeriodsAreAdded()
+    {
+        // Arrange
+        var colabMock = new Mock<IColaborator>();
+        var holiday = new Holiday(colabMock.Object);
+        var holidayPeriodFactoryMock = new Mock<IHolidayPeriodFactory>();
+        var firstPeriod = new HolidayPeriod(DateOnly.FromDateTime(DateTime.Today), DateOnly.FromDateTime(DateTime.Today.AddDays(5)));
+        var secondPeriod = new HolidayPeriod(DateOnly.FromDateTime(DateTime.Today.AddDays(6)), DateOnly.FromDateTime(DateTime.Today.AddDays(10)));
+
+        holidayPeriodFactoryMock.SetupSequence(hpf => hpf.NewHolidayPeriod(It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
+            .Returns(firstPeriod)
+            .Returns(secondPeriod);
+
+        // Act
+        holiday.addHolidayPeriod(holidayPeriodFactoryMock.Object, firstPeriod.getStartDate(), firstPeriod.getEndDate());
+        holiday.addHolidayPeriod(holidayPeriodFactoryMock.Object, secondPeriod.getStartDate(), secondPeriod.getEndDate());
+
+        // Assert
+        Assert.Equal(2, holiday.getHolidayPeriodsInRange(DateOnly.MinValue, DateOnly.MaxValue).Count);
+    }
+
+    [Fact]
+    public void GivenPeriodsInRange_WhenExactMatch_ThenReturnsMatchingPeriods()
+    {
+        // Arrange
+        var colabMock = new Mock<IColaborator>();
+        var holiday = new Holiday(colabMock.Object);
+        var holidayPeriodFactoryMock = new Mock<IHolidayPeriodFactory>();
+        var period = new HolidayPeriod(DateOnly.FromDateTime(DateTime.Today), DateOnly.FromDateTime(DateTime.Today.AddDays(5)));
+
+        holidayPeriodFactoryMock.Setup(hpf => hpf.NewHolidayPeriod(It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
+            .Returns(period);
+
+        holiday.addHolidayPeriod(holidayPeriodFactoryMock.Object, period.getStartDate(), period.getEndDate());
+
+        // Act
+        var result = holiday.getHolidayPeriodsInRange(period.getStartDate(), period.getEndDate());
+
+        // Assert
+        Assert.Single(result);
+        Assert.Equal(period, result.First());
+    }
+
+    [Fact]
+    public void GetTotalHolidayDays_SinglePeriod_CalculatesCorrectly()
+    {
+        // Arrange
+        var mockFactory = new Mock<IHolidayPeriodFactory>();
+        var mockColab = new Mock<IColaborator>();
+        var holiday = new Holiday(mockColab.Object);
+        var startDate = new DateOnly(2023, 1, 1);
+        var endDate = new DateOnly(2023, 1, 10);
+        var expectedDays = 10; 
+        var period = new HolidayPeriod(startDate, endDate);
+
+        mockFactory.Setup(f => f.NewHolidayPeriod(startDate, endDate)).Returns(period);
+
+        holiday.addHolidayPeriod(mockFactory.Object, startDate, endDate);
+
+        // Act
+        var totalDays = holiday.getTotalHolidayDays(new List<HolidayPeriod> { period });
+
+        // Assert
+        Assert.Equal(expectedDays, totalDays);
+    }
+
+    [Fact]
+    public void GivenPeriodsOutsideRange_WhenRetrieving_ThenIgnoresNonMatchingPeriods()
+    {
+        // Arrange
+        var colabMock = new Mock<IColaborator>();
+        var holiday = new Holiday(colabMock.Object);
+        var holidayPeriodFactoryMock = new Mock<IHolidayPeriodFactory>();
+        var beforePeriod = new HolidayPeriod(DateOnly.FromDateTime(DateTime.Today.AddDays(-10)), DateOnly.FromDateTime(DateTime.Today.AddDays(-5)));
+        var afterPeriod = new HolidayPeriod(DateOnly.FromDateTime(DateTime.Today.AddDays(6)), DateOnly.FromDateTime(DateTime.Today.AddDays(10)));
+
+        holidayPeriodFactoryMock.SetupSequence(hpf => hpf.NewHolidayPeriod(It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
+                .Returns(beforePeriod)
+                .Returns(afterPeriod);
+
+        holiday.addHolidayPeriod(holidayPeriodFactoryMock.Object, beforePeriod.getStartDate(), beforePeriod.getEndDate());
+        holiday.addHolidayPeriod(holidayPeriodFactoryMock.Object, afterPeriod.getStartDate(), afterPeriod.getEndDate());
+
+
+        var rangeStart = DateOnly.FromDateTime(DateTime.Today);
+        var rangeEnd = DateOnly.FromDateTime(DateTime.Today.AddDays(1));
+
+        // Act
+        var result = holiday.getHolidayPeriodsInRange(rangeStart, rangeEnd);
+
+        // Assert
+        Assert.Empty(result);
+    }
+
 
 }

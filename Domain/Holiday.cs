@@ -4,7 +4,7 @@ public class Holiday
 {
 	private IColaborator _colaborator;
 
-	private List<HolidayPeriod> _holidayPeriods = new List<HolidayPeriod>();
+	private List<HolidayPeriod> _holidayPeriods;
 
 	public Holiday(IColaborator colab)
 	{
@@ -13,18 +13,40 @@ public class Holiday
 		else
 			throw new ArgumentException("Invalid argument: colaborator must be non null");
 
-		//_colaborator = colab ?? throw new ArgumentException("Invalid argument: colaborator must be non null");
+		_holidayPeriods = new List<HolidayPeriod>();
+	}
+	
+	public HolidayPeriod addHolidayPeriod(IHolidayPeriodFactory holidayPeriodFactory, DateOnly startDate, DateOnly endDate) { 
+
+		HolidayPeriod holidayPeriod = holidayPeriodFactory.NewHolidayPeriod(startDate, endDate);
+		_holidayPeriods.Add(holidayPeriod);
+		 return holidayPeriod;
 	}
 
-	// public HolidayPeriod addHolidayPeriod(DateOnly startDate, DateOnly endDate) {
+	public List<HolidayPeriod> getHolidayPeriodsInRange(DateOnly startDate, DateOnly endDate){
+        var result = new List<HolidayPeriod>();
+        foreach(HolidayPeriod p in _holidayPeriods){
+	 		if(p.getStartDate() >= startDate && p.getEndDate() <= endDate){
+	 			result.Add(p);
+	 		}
+	 	}
+        return result;
+    }
 
-	// 	new HolidayPeriod(startDate, endDate);
+	public int getTotalHolidayDays(List<HolidayPeriod> _holidayPeriods){
+ 
+        int totalDiasFerias = 0;
+       
+        foreach (HolidayPeriod holidayPeriod in _holidayPeriods){
+            int dias = holidayPeriod.getEndDate().DayNumber - holidayPeriod.getStartDate().DayNumber + 1;
+            totalDiasFerias += dias;
+        }
+        return totalDiasFerias;
+    }
+ 
 
-
-	// }
-
-	public string getName() {
-		return _colaborator.getName();
+	public IColaborator GetColaborator() {
+	   return _colaborator;
 	}
+
 }
-

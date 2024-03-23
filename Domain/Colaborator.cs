@@ -1,11 +1,12 @@
 ﻿namespace Domain;
 
+using System.Dynamic;
 using System.Net.Mail;
 
 public class Colaborator : IColaborator
 {
     private string _strName;
-    private object _strEmail;
+    private string _strEmail;
 
     public Colaborator(string strName, string strEmail) {
 
@@ -17,11 +18,10 @@ public class Colaborator : IColaborator
 			throw new ArgumentException("Invalid arguments.");
 	}
 
-	private bool isValidParameters(string strName, string strEmail) {
+	public bool isValidParameters(string strName, string strEmail) {
 
-		if( strName==null ||
+		if(string.IsNullOrWhiteSpace(strName) ||
 			strName.Length > 50 ||
-			string.IsNullOrEmpty(strName) ||
 			ContainsAny(strName, ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]))
 			return false;
 
@@ -53,7 +53,13 @@ public class Colaborator : IColaborator
 		return valid;
 	}
 
-	public string getName() {
+	public string GetName() {
 		return _strName;
 	}
+
+	public string GetEmail() {
+		return _strEmail;
+	}
+
 }
+
